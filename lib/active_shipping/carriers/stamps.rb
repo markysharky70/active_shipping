@@ -127,6 +127,13 @@ module ActiveShipping
 
     IMAGE_TYPE = %w(Auto Epl Gif Jpg Pdf Png Zpl)
 
+    NON_DELIVERY_OPTIONS = [
+      'Undefined',
+      'Return',
+      'Abandon',
+      'Redirect'
+    ]
+
     def account_info
       request = build_get_account_info_request
       commit(:GetAccountInfo, request)
@@ -160,6 +167,11 @@ module ActiveShipping
       destination = standardize_address(destination)
       request = build_create_indicium_request(origin, destination, package, line_items, options)
       commit(:CreateIndicium, request)
+    end
+
+    def void_label(shipment_id, options = {})
+      request = build_cancel_indicium_request(shipment_id, options)
+      commit(:CancelIndicium, request)
     end
 
     def find_tracking_info(shipment_id, options = {})
@@ -387,6 +399,7 @@ module ActiveShipping
           xml['tns'].rotationDegrees(          options[:rotation]) unless options[:rotation].blank?
           xml['tns'].printMemo(                options[:print_memo]) unless options[:print_memo].blank?
           xml['tns'].printInstructions(        options[:print_instructions]) unless options[:print_instructions].blank?
+          xml['tns'].nonDeliveryOption(        options[:non_delivery_option]) unless options[:non_delivery_option].blank?          
           xml['tns'].ReturnImageData(          options[:return_image_data]) unless options[:return_image_data].blank?
           xml['tns'].InternalTransactionNumber(options[:internal_transaction_number]) unless options[:internal_transaction_number].blank?
           xml['tns'].PaperSize(                options[:paper_size]) unless options[:paper_size].blank?
@@ -435,6 +448,15 @@ module ActiveShipping
         xml['tns'].Name(            options[:name]) unless options[:name].blank?
         xml['tns'].Note(            options[:note]) unless options[:note].blank?
         xml['tns'].CopyToOriginator(options[:copy_to_originator]) unless options[:copy_to_originator].blank?
+      end
+    end
+
+    def build_cancel_indicium_request(shipment_id, options)
+      build_header do |xml|
+        xml['tns'].CancelIndicium do
+          xml['tns'].Authenticator(authenticator)
+          xml['tns'].public_send(options[:stamps_tx_id] ? :StampsTxID : :TrackingNumber, shipment_id)
+        end
       end
     end
 
@@ -707,6 +729,10 @@ module ActiveShipping
       response_options[:rate]              = parse_rate(indicium.at('Rate'))
 
       StampsShippingResponse.new(true, '', {}, response_options)
+    end
+
+    def parse_cancel_indicium_response(indicium, response_options)
+      parse_authenticator(indicium)
     end
 
     def parse_track_shipment_response(track_shipment, response_options)
