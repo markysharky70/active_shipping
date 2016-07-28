@@ -139,8 +139,8 @@ module ActiveShipping
       commit(:GetAccountInfo, request)
     end
 
-    def purchase_postage(purchase_amount, control_total)
-      request = build_purchase_postage_request(purchase_amount, control_total)
+    def purchase_postage(purchase_amount, control_total, integrator_tx_id)
+      request = build_purchase_postage_request(purchase_amount, control_total, integrator_tx_id)
       commit(:PurchasePostage, request)
     end
 
@@ -267,12 +267,13 @@ module ActiveShipping
       end
     end
 
-    def build_purchase_postage_request(purchase_amount, control_total)
+    def build_purchase_postage_request(purchase_amount, control_total, integrator_tx_id)
       build_header do |xml|
         xml['tns'].PurchasePostage do
           xml['tns'].Authenticator(authenticator)
           xml['tns'].PurchaseAmount(purchase_amount)
           xml['tns'].ControlTotal(control_total)
+          xml['tns'].IntegratorTxID(integrator_tx_id)
         end
       end
     end
